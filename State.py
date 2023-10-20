@@ -1,4 +1,3 @@
-
 from utils import *
 
 
@@ -41,7 +40,7 @@ class State:
 
         for turn in range(1, self.starting_hand_size+1):
             current_played_cards = []
-            current_state = copy.deepcopy(tuple((turn, self.board)))
+            current_state = copy.deepcopy(self.board)
 
             for p in self.players:
                 current_played_cards.append((p, p.choose_action(self.board, self.played_cards)))
@@ -51,7 +50,7 @@ class State:
             self.add_cards_to_board(current_played_cards)
             # print(self.board)
 
-            next_state = copy.deepcopy(tuple((turn, self.board)))
+            next_state = copy.deepcopy(self.board)
 
             for i, p in enumerate(self.players):
                 if isinstance(p, QlearnPlayer):
@@ -65,6 +64,20 @@ class State:
                         p.epsilon *= 0.99
 
                     p.learn(current_state, reward, next_state)
+
+                if isinstance(p, DeepQPlayer):
+                    if turn != 10:
+                        reward = p.calculate_reward()
+                        done = False
+                    else:
+                        self.update_scoreboard()
+                        sorted_indices = np.argsort(self.scoreboard)
+                        ranks = np.argsort(sorted_indices) + 1
+                        reward = p.calculate_reward(ranks[i])
+                        done = True
+
+                    p.remember(current_state, p.current_action, reward, next_state, done)
+                    p.train()
 
                 p.prepare_for_next_turn()
 
@@ -122,10 +135,16 @@ import json
 
 if __name__ == '__main__':
     state = State(CARDS)
+
+    # Deep Q Learning Model Initialization
+    model = QNetwork().to(device)
+    target_model = QNetwork().to(device)
+    target_model.load_state_dict(model.state_dict())
+
     p1 = RulePlayer('Player 1')
-    p2 = RandomPlayer('Player 2')
-    p3 = RandomPlayer('Player 3')
-    p4 = RandomPlayer('Player 4')
+    p2 = DeepQPlayer('Player 2', model, target_model)
+    p3 = DeepQPlayer('Player 3', model, target_model)
+    p4 = RulePlayer('Player 4')
     p5 = RandomPlayer('Player 5')
     state.add_player(p1)
     state.add_player(p2)
@@ -143,7 +162,8 @@ if __name__ == '__main__':
     #
     # print("Learning Completed")
     #
-    num_of_games = 10000
+
+    num_of_games = 30000
 
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(num_of_games):
@@ -151,6 +171,22 @@ if __name__ == '__main__':
         state.play()
         final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
         state.prepare_for_next_game()
-
+        if episode % 100 == 0:
+            p2.update_target_network()
     final_scores = [x / num_of_games for x in final_scores]
     print (final_scores)
+
+    num_of_games = 5000
+
+    final_scores = [0, 0, 0, 0, 0]
+    for episode in range(num_of_games):
+        print(episode)
+        state.play()
+        final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
+        state.prepare_for_next_game()
+        if episode % 100 == 0:
+            p2.update_target_network()
+    final_scores = [x / num_of_games for x in final_scores]
+    print (final_scores)
+
+    torch.save(model, "deepqlearn.pth")
