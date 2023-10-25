@@ -3,7 +3,7 @@ from Player.BasePlayer import BasePlayer
 
 
 class RandomPlayer(BasePlayer):
-
+    rewards = []
     def __init__(self, name):
         super().__init__(name)
 

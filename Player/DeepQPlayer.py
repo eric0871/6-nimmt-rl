@@ -12,7 +12,7 @@ print(device)
 class DeepQPlayer(BasePlayer):
     memory = []
 
-    def __init__(self, name, model, target_model, learning_rate=0.001, discount_factor=0.99, exploration=1.0, exploration_decay=0.995, exploration_min=0.01):
+    def __init__(self, name, model, target_model, learning_rate=0.0001, discount_factor=0.99, exploration=1.0, exploration_decay=0.995, exploration_min=0.01):
         super().__init__(name)
         self.model = model
         self.target_model = target_model
@@ -28,6 +28,7 @@ class DeepQPlayer(BasePlayer):
         # Exploration
         if np.random.rand() <= self.epsilon:
             self.current_action = np.random.choice(self.hand)
+            self.hand.remove(self.current_action)
             return self.current_action
         # Exploitation
         with torch.no_grad():
@@ -43,11 +44,12 @@ class DeepQPlayer(BasePlayer):
             # Filter q_values for only the cards in hand and select the card with max Q value
             q_values_hand = {card: q_values[card-1] for card in self.hand}
             best_card = min(q_values_hand, key=q_values_hand.get)
+            self.hand.remove(best_card)
             self.current_action = best_card
             return best_card
 
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def remember(self, state, action, reward, next_state, done, hand):
+        self.memory.append((state, action, reward, next_state, done, hand))
 
     def train(self):
         if len(self.memory) < 1000:
@@ -55,24 +57,51 @@ class DeepQPlayer(BasePlayer):
 
         batch = np.random.choice(len(self.memory), self.batch_size, replace=False)
         batch = [self.memory[i] for i in batch]
-        states, actions, rewards, next_states, dones = zip(*batch)
-        #print(states)
+
+        states, actions, rewards, next_states, dones, hands = zip(*batch)
+        #print("hand:", hands[0])
+        #print("action:", actions[0])
+        # print(states[0], actions[0], rewards[0], next_states[0])
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.int64).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
         next_states = torch.tensor(next_states, dtype=torch.float32).to(device)
         dones = torch.tensor(dones, dtype=torch.float32).to(device)
 
-        q_values = self.model(states)
-        q_values = q_values.gather(1, actions.unsqueeze(-1)).squeeze(-1)
-        next_q_values = self.target_model(next_states)
-        next_q_values, _ = next_q_values.min(dim=1)
+        action_masks = []
+        #print(hands[0])
+        for each_hand in hands:
+            if len(each_hand) == 0:
+                mask = [0]*104
+                action_masks.append(mask)
+            else:
+                mask = [float('inf')]*104
+                for playable_card in each_hand:
+                    mask[playable_card-1] = 0
+                action_masks.append(mask)
+        action_masks = torch.tensor(action_masks).to(device)
 
-        targets = rewards + (1 - dones) * self.gamma * next_q_values
+        q_values = self.model(states)
+        #print('training q:', q_values[0])
+        q_values = q_values.gather(1, actions.unsqueeze(-1)).squeeze(-1)
+        #print("gathered q:", q_values[0])
+        #print("q_values:", q_values)
+
+        next_q_values = self.target_model(next_states)
+        #print('next_q_values:', next_q_values[0])
+        masked_next_q_values = next_q_values + action_masks
+        #print('masked_next_q_values:', masked_next_q_values[0])
+        min_next_q_values, _ = masked_next_q_values.min(dim=1)
+        #print('min_next_q_values:', min_next_q_values[0])
+        targets = rewards + (1 - dones) * self.gamma * min_next_q_values
+        #print ('reward:', rewards[0])
+        #print('targets:', targets[0])
+
         loss = self.loss_fn(q_values, targets.detach())
 
         self.optimizer.zero_grad()
         loss.backward()
+        print(loss)
         self.optimizer.step()
 
         self.memory = []
@@ -82,24 +111,6 @@ class DeepQPlayer(BasePlayer):
 
     def update_target_network(self):
         self.target_model.load_state_dict(self.model.state_dict())
-
-    def calculate_reward(self, rank=0):
-        end_game_bonus = 0
-
-        if rank == 1:
-            end_game_bonus = 20
-        elif rank == 2:
-            end_game_bonus = 7
-        elif rank == 3:
-            end_game_bonus = 2
-        elif rank == 4:
-            end_game_bonus = 1
-
-        if self.cur_bullhead == 0:
-            return 0.5 + end_game_bonus
-        else:
-            return self.cur_bullhead + end_game_bonus
-
 
 
 class QNetwork(nn.Module):
@@ -111,7 +122,11 @@ class QNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(128, 256),
             nn.ReLU(),
-            nn.Linear(256, 104)
+            nn.Linear(256, 512),
+            nn.ReLU(),
+            nn.Linear(512, 128),
+            nn.ReLU(),
+            nn.Linear(128, 104)
         )
 
     def forward(self, board):

@@ -53,6 +53,15 @@ class State:
             next_state = copy.deepcopy(self.board)
 
             for i, p in enumerate(self.players):
+                # if turn != 10:
+                #     p.rewards.append(p.calculate_reward())
+                # else:
+                #     self.update_scoreboard()
+                #     sorted_indices = np.argsort(self.scoreboard)
+                #     ranks = np.argsort(sorted_indices) + 1
+                #     p.rewards.append(p.calculate_reward(ranks[i]))
+
+
                 if isinstance(p, QlearnPlayer):
                     if turn != 10:
                         reward = p.calculate_reward()
@@ -62,8 +71,7 @@ class State:
                         sorted_indices = np.argsort(self.scoreboard)
                         ranks = np.argsort(sorted_indices) + 1
                         reward = p.calculate_reward(ranks[i])
-                        print(reward)
-                        p.epsilon *= 0.99
+                        #print(reward)
 
                     p.learn(current_state, reward, next_state)
 
@@ -73,7 +81,10 @@ class State:
                         #print(reward)
                         done = False
                     else:
-                        reward = p.calculate_reward()
+                        self.update_scoreboard()
+                        sorted_indices = np.argsort(self.scoreboard)
+                        ranks = np.argsort(sorted_indices) + 1
+                        reward = p.calculate_reward(ranks[i])
                         #print(reward)
                         done = True
 
@@ -82,7 +93,9 @@ class State:
                     cur_state_t = [item for sublist in current_state_t for item in sublist]
                     next_state_t = [item for sublist in next_state_t for item in sublist]
 
-                    p.remember(cur_state_t, p.current_action-1, reward, next_state_t, done)
+                    #print(cur_state_t, p.current_action-1, reward, next_state_t, done,p.hand)
+                    a = copy.deepcopy(p.hand)
+                    p.remember(cur_state_t, p.current_action-1, reward, next_state_t, done, a)
                     p.train()
 
                 p.prepare_for_next_turn()
@@ -148,9 +161,9 @@ if __name__ == '__main__':
     target_model = QNetwork().to(device)
     target_model.load_state_dict(model.state_dict())
 
-    p1 = RulePlayer('Player 1')
+    p1 = DeepQPlayer('Player 1', model, target_model)
     p2 = DeepQPlayer('Player 2', model, target_model)
-    p3 = DeepQPlayer('Player 3', model, target_model)
+    p3 = RulePlayer('Player 3')
     p4 = RulePlayer('Player 4')
     p5 = RandomPlayer('Player 5')
     state.add_player(p1)
@@ -160,14 +173,15 @@ if __name__ == '__main__':
     state.add_player(p5)
 
 
-    num_of_games = 30000
+    num_of_games = 100000
 
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(1, num_of_games+1):
+        print('episode:', episode)
         state.play()
         final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
         state.prepare_for_next_game()
-        if episode % 128 == 0:
+        if episode % 300 == 0:
             p2.update_target_network()
         if episode % 1000 == 0:
             print(episode)
@@ -175,4 +189,5 @@ if __name__ == '__main__':
             #print(p2.epsilon)
             final_scores = [0, 0, 0, 0, 0]
 
-    torch.save(model.state_dict(), "deepqlearn3.pth")
+
+    #torch.save(model.state_dict(), "deepqlearn3.pth")

@@ -23,6 +23,20 @@ class BasePlayer:
         self.cur_bullhead += BULLHEAD[card]
         self.cum_bullhead += BULLHEAD[card]
 
+    def calculate_reward(self, rank=0):
+        end_game_bonus = 0
+
+        if rank == 1:
+            end_game_bonus = -25
+        elif rank == 2:
+            end_game_bonus = -15
+        elif rank == 3:
+            end_game_bonus = -7
+        elif rank == 4:
+            end_game_bonus = -3
+
+        return (((self.cur_bullhead + end_game_bonus) + 25) / 50)
+
     def prepare_for_next_round(self):
         self.hand = []
         self.cum_bullhead = 0
