@@ -3,7 +3,7 @@ import numpy as np
 import copy
 import json
 
-CARDS = [i for i in range(1, 104)]
+CARDS = [i for i in range(1, 105)]
 
 # Number of Bullheads on each card
 BULLHEAD = dict.fromkeys(range(1, 105), 1)

@@ -27,36 +27,30 @@ class DeepQPlayer(BasePlayer):
     def choose_action(self, board, played_cards):
         # Exploration
         if np.random.rand() <= self.epsilon:
-            self.current_action = np.random.choice(self.hand)
-            return self.current_action
+            return np.random.choice(self.hand)
         # Exploitation
         with torch.no_grad():
-            # Format Board
             board = torch.tensor(board, dtype=torch.float32).to(device)
-            resized_board = board[:,:-1]
-            resized_board = torch.flatten(resized_board)
-
-            q_values = self.model(resized_board)
-            #print(board)
-            #print(q_values[10])
-
+            board = torch.flatten(board)
+            q_values = self.model(board)
+            print(board)
+            print(q_values[10])
             # Filter q_values for only the cards in hand and select the card with max Q value
-            q_values_hand = {card: q_values[card-1] for card in self.hand}
+            q_values_hand = {card: q_values[card] for card in self.hand}
             best_card = min(q_values_hand, key=q_values_hand.get)
             self.current_action = best_card
             return best_card
 
-    def remember(self, state, action, reward, next_state, done):
-        self.memory.append((state, action, reward, next_state, done))
+    def remember(self, state, action, reward, next_state, done, hand):
+        self.memory.append((state, action, reward, next_state, done, hand))
 
     def train(self):
-        if len(self.memory) < 1000:
+        if len(self.memory) < self.batch_size:
             return
 
-        batch = np.random.choice(len(self.memory), self.batch_size, replace=False)
-        batch = [self.memory[i] for i in batch]
+        batch = np.random.choice(self.memory, self.batch_size, replace=False)
         states, actions, rewards, next_states, dones = zip(*batch)
-        #print(states)
+
         states = torch.tensor(states, dtype=torch.float32).to(device)
         actions = torch.tensor(actions, dtype=torch.int64).to(device)
         rewards = torch.tensor(rewards, dtype=torch.float32).to(device)
@@ -66,7 +60,7 @@ class DeepQPlayer(BasePlayer):
         q_values = self.model(states)
         q_values = q_values.gather(1, actions.unsqueeze(-1)).squeeze(-1)
         next_q_values = self.target_model(next_states)
-        next_q_values, _ = next_q_values.min(dim=1)
+        next_q_values, _ = next_q_values.max(dim=1)
 
         targets = rewards + (1 - dones) * self.gamma * next_q_values
         loss = self.loss_fn(q_values, targets.detach())
@@ -83,22 +77,11 @@ class DeepQPlayer(BasePlayer):
     def update_target_network(self):
         self.target_model.load_state_dict(self.model.state_dict())
 
-    def calculate_reward(self, rank=0):
-        end_game_bonus = 0
-
-        if rank == 1:
-            end_game_bonus = 20
-        elif rank == 2:
-            end_game_bonus = 7
-        elif rank == 3:
-            end_game_bonus = 2
-        elif rank == 4:
-            end_game_bonus = 1
-
+    def calculate_reward(self):
         if self.cur_bullhead == 0:
-            return 0.5 + end_game_bonus
+            return 0
         else:
-            return self.cur_bullhead + end_game_bonus
+            return self.cur_bullhead
 
 
 
@@ -107,7 +90,7 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
 
         self.fc_layers = nn.Sequential(
-            nn.Linear(20, 128),
+            nn.Linear(24, 128),
             nn.ReLU(),
             nn.Linear(128, 256),
             nn.ReLU(),

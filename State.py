@@ -56,11 +56,13 @@ class State:
                 if isinstance(p, QlearnPlayer):
                     if turn != 10:
                         reward = p.calculate_reward()
+                        print(reward)
                     else:
                         self.update_scoreboard()
                         sorted_indices = np.argsort(self.scoreboard)
                         ranks = np.argsort(sorted_indices) + 1
                         reward = p.calculate_reward(ranks[i])
+                        print(reward)
                         p.epsilon *= 0.99
 
                     p.learn(current_state, reward, next_state)
@@ -68,15 +70,19 @@ class State:
                 if isinstance(p, DeepQPlayer):
                     if turn != 10:
                         reward = p.calculate_reward()
+                        #print(reward)
                         done = False
                     else:
-                        self.update_scoreboard()
-                        sorted_indices = np.argsort(self.scoreboard)
-                        ranks = np.argsort(sorted_indices) + 1
-                        reward = p.calculate_reward(ranks[i])
+                        reward = p.calculate_reward()
+                        #print(reward)
                         done = True
 
-                    p.remember(current_state, p.current_action, reward, next_state, done)
+                    current_state_t = [row[:-1] for row in current_state]
+                    next_state_t = [row[:-1] for row in next_state]
+                    cur_state_t = [item for sublist in current_state_t for item in sublist]
+                    next_state_t = [item for sublist in next_state_t for item in sublist]
+
+                    p.remember(cur_state_t, p.current_action-1, reward, next_state_t, done)
                     p.train()
 
                 p.prepare_for_next_turn()
@@ -138,6 +144,7 @@ if __name__ == '__main__':
 
     # Deep Q Learning Model Initialization
     model = QNetwork().to(device)
+    #model.load_state_dict(torch.load("deepqlearn3.pth"))
     target_model = QNetwork().to(device)
     target_model.load_state_dict(model.state_dict())
 
@@ -152,41 +159,20 @@ if __name__ == '__main__':
     state.add_player(p4)
     state.add_player(p5)
 
-    # Train Qlearn Player
-    # num_of_games = 1000000
-    #
-    # for episode in range(num_of_games):
-    #     print(episode)
-    #     state.play()
-    #     state.prepare_for_next_game()
-    #
-    # print("Learning Completed")
-    #
 
     num_of_games = 30000
 
     final_scores = [0, 0, 0, 0, 0]
-    for episode in range(num_of_games):
-        print(episode)
+    for episode in range(1, num_of_games+1):
         state.play()
         final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
         state.prepare_for_next_game()
-        if episode % 100 == 0:
+        if episode % 128 == 0:
             p2.update_target_network()
-    final_scores = [x / num_of_games for x in final_scores]
-    print (final_scores)
+        if episode % 1000 == 0:
+            print(episode)
+            print([x / 1000 for x in final_scores])
+            #print(p2.epsilon)
+            final_scores = [0, 0, 0, 0, 0]
 
-    num_of_games = 5000
-
-    final_scores = [0, 0, 0, 0, 0]
-    for episode in range(num_of_games):
-        print(episode)
-        state.play()
-        final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
-        state.prepare_for_next_game()
-        if episode % 100 == 0:
-            p2.update_target_network()
-    final_scores = [x / num_of_games for x in final_scores]
-    print (final_scores)
-
-    torch.save(model, "deepqlearn.pth")
+    torch.save(model.state_dict(), "deepqlearn3.pth")
