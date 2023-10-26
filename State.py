@@ -90,12 +90,33 @@ class State:
 
                     current_state_t = [row[:-1] for row in current_state]
                     next_state_t = [row[:-1] for row in next_state]
+                    positions_for_card_c = []
+                    bullhead_per_row_c = []
+                    positions_for_card_n = []
+                    bullhead_per_row_n = []
+                    for line in current_state_t:
+                        positions_for_card_c.append(line.count(0))
+                        bullhead_sum = 0
+                        for element in line:
+                            bullhead_sum += BULLHEAD[element]
+                        bullhead_per_row_c.append(bullhead_sum)
+                    for line in next_state_t:
+                        positions_for_card_n.append(line.count(0))
+                        bullhead_sum = 0
+                        for element in line:
+                            bullhead_sum += BULLHEAD[element]
+                        bullhead_per_row_n.append(bullhead_sum)
                     cur_state_t = [item for sublist in current_state_t for item in sublist]
                     next_state_t = [item for sublist in next_state_t for item in sublist]
 
                     #print(cur_state_t, p.current_action-1, reward, next_state_t, done,p.hand)
-                    a = copy.deepcopy(p.hand)
-                    p.remember(cur_state_t, p.current_action-1, reward, next_state_t, done, a)
+                    hand_remember = copy.deepcopy(p.hand)
+                    hand_nn = copy.deepcopy(p.hand)
+                    hand_nn.extend([0] * (10-len(hand_nn)))
+                    large_state_c = hand_nn + cur_state_t + positions_for_card_c + bullhead_per_row_c
+                    large_state_n = hand_nn + next_state_t + positions_for_card_n + bullhead_per_row_n
+                    #print(large_state_c)
+                    p.remember(large_state_c, p.current_action-1, reward, large_state_n, done, hand_remember)
                     p.train()
 
                 p.prepare_for_next_turn()
@@ -173,11 +194,11 @@ if __name__ == '__main__':
     state.add_player(p5)
 
 
-    num_of_games = 100000
+    num_of_games = 1000000
 
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(1, num_of_games+1):
-        print('episode:', episode)
+        #print('episode:', episode)
         state.play()
         final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
         state.prepare_for_next_game()

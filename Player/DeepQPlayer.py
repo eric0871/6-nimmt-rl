@@ -33,11 +33,23 @@ class DeepQPlayer(BasePlayer):
         # Exploitation
         with torch.no_grad():
             # Format Board
-            board = torch.tensor(board, dtype=torch.float32).to(device)
-            resized_board = board[:,:-1]
-            resized_board = torch.flatten(resized_board)
+            board_nn = [row[:-1] for row in board]
+            resized_board = [item for sublist in board_nn for item in sublist]
+            positions_for_card = []
+            bullhead_per_row = []
+            for line in board:
+                positions_for_card.append(line.count(0))
+                bullhead_sum = 0
+                for element in line:
+                    bullhead_sum += BULLHEAD[element]
+                bullhead_per_row.append(bullhead_sum)
 
-            q_values = self.model(resized_board)
+            hand_nn = copy.deepcopy(self.hand)
+            hand_nn.extend([0] * (10 - len(hand_nn)))
+
+            large_state_n = hand_nn + resized_board + positions_for_card + bullhead_per_row
+            feed = torch.tensor(large_state_n, dtype=torch.float32).to(device)
+            q_values = self.model(feed)
             #print(board)
             #print(q_values[10])
 
@@ -118,13 +130,11 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
 
         self.fc_layers = nn.Sequential(
-            nn.Linear(20, 128),
+            nn.Linear(38, 128),
             nn.ReLU(),
             nn.Linear(128, 256),
             nn.ReLU(),
-            nn.Linear(256, 512),
-            nn.ReLU(),
-            nn.Linear(512, 128),
+            nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, 104)
         )
