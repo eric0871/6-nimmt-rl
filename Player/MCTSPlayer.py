@@ -37,13 +37,16 @@ class MCTSPlayer(BasePlayer):
         self.board = b
 
         n = len(self.hand)
-        n_mc = min(50000, 3000 * math.factorial(n))
+        n_mc = min(100, 50 * math.factorial(n))
         outcomes = {action: [] for action in self.hand}
         for _ in range(n_mc):
+            print(_)
             simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(self.hand),
-                                      copy.deepcopy(self.available_cards), self.num_of_players)
+                                      copy.deepcopy(self.available_cards), self.num_of_players, method='real')
             action, outcome = simulated_env.play_out()
             outcomes[action].append(outcome)
+
+
         best_action = choose_from_outcomes(outcomes)
         self.hand.remove(best_action)
 
@@ -61,11 +64,12 @@ class MCTSPlayer(BasePlayer):
         self.available_cards = list(range(1, 105))
 
 class Simulator():
-    def __init__(self, board, hero_hand, available_cards, num_of_players):
+    def __init__(self, board, hero_hand, available_cards, num_of_players, method):
         self.board = board
         self.hero_hand = hero_hand
         self.available_cards = available_cards
         self.num_of_players = num_of_players
+        self.method = method
 
     def play_out(self):
         other_player_hands = self.initialize_other_player_hands()
@@ -82,11 +86,9 @@ class Simulator():
             if turn == 0:
                 initial_action = hero_action
 
-            for i in range(len(other_player_hands)):
-                # other_player_action = self.choose_action_for_others(other_player_hands)
-                other_player_action = random.sample(other_player_hands[i], 1)[0]
-                actions.append(other_player_action)
-                other_player_hands[i].remove(other_player_action)
+            other_player_actions, other_player_hands = self.choose_action_for_others(other_player_hands, self.method)
+            actions += other_player_actions
+
             self.board, next_outcome = update_state(self.board, actions)
             outcome += next_outcome
 
@@ -101,18 +103,44 @@ class Simulator():
                 self.available_cards.remove(card)
         return other_player_hands
 
-    def choose_action_for_others(self, other_player_hands, method='random'):
-        for hands in other_player_hands:
-            pass
+    def choose_action_for_others(self, other_player_hands, method):
+        actions = []
+        if method == 'random':
+            for i in range(len(other_player_hands)):
+                other_player_action = random.sample(other_player_hands[i], 1)[0]
+                actions.append(other_player_action)
+                other_player_hands[i].remove(other_player_action)
 
+        if method == 'real':
+            for i in range(len(other_player_hands)):
+                n = len(other_player_hands[i])
+                n_mc = min(100, 50 * math.factorial(n))
+                available_cards_other = list(range(1, 105))
+                cards_used = other_player_hands[i] + np.array(self.board).ravel().tolist()
+                cards_used = [x for x in cards_used if x!= 0]
+                for card in cards_used:
+                    available_cards_other.remove(card)
+                outcomes = {action: [] for action in other_player_hands[i]}
+
+                for _ in range(n_mc):
+                    simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(other_player_hands[i]),
+                                              copy.deepcopy(available_cards_other), self.num_of_players, method='random')
+                    action, outcome = simulated_env.play_out()
+                    outcomes[action].append(outcome)
+
+                best_action = choose_from_outcomes_softmax(outcomes)
+                actions.append(best_action)
+                other_player_hands[i].remove(best_action)
+
+        return actions, other_player_hands
 
 board = [
-    [95, 0, 0, 0, 0, 0],
-    [87, 0, 0, 0, 0, 0],
-    [80, 0, 0, 0, 0, 0],
-    [74, 0, 0, 0, 0, 0]
+    [40, 71, 78, 80, 0, 0],
+    [52, 0, 0, 0, 0, 0],
+    [20, 26, 30, 59, 63, 0],
+    [89, 99, 102, 103, 0, 0]
 ]
-hand = [12,23,36,40,63,70,71,77,78,101]
+hand = [41,53,103]
 
 agent = MCTSPlayer('Eric', 5)
 agent.hand = hand

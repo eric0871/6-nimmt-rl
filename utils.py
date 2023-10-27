@@ -33,7 +33,7 @@ def get_score(player_board):
     return point
 
 
-def update_state(board, played_cards, real_game = False):
+def update_state(board, played_cards, real_game=False):
     hero_action = played_cards[0]
     next_outcome = 0
     played_cards = sorted(played_cards)
@@ -91,3 +91,21 @@ def choose_from_outcomes(outcomes):
             best_action = action
             best_mean = np.mean(outcome)
     return best_action
+
+
+def choose_from_outcomes_softmax(outcomes):
+    expected_values = []
+    for outcome in outcomes.values():
+        if outcome == []:
+            continue
+        expected_values.append(np.mean(outcome))
+    probs = softmax(np.array(expected_values))
+    chosen_action = np.random.choice(list(outcomes.keys()), p=probs)
+
+    return chosen_action
+
+
+def softmax(x):
+    """Compute softmax values for each element of numpy array x."""
+    exp_x = np.exp(x - np.max(x))  # Subtract max for numerical stability
+    return exp_x / exp_x.sum()
