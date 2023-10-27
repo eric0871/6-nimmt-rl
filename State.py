@@ -12,6 +12,7 @@ class State:
         self.starting_hand_size = 10
         self.scoreboard = []
         self.deterministic = False
+        self.available_cards = list(range(1, 105))
 
     def add_player(self, player):
         self.players.append(player)
@@ -28,8 +29,14 @@ class State:
                 p.draw(self.card_pool.pop())
             # print(sorted(p.hand))
 
+            if isinstance(p, MCTSPlayer):
+                for c in p.hand:
+                    p.available_cards.remove(c)
+
         for row in range(4):
-            self.board[row][0] = self.card_pool.pop()
+            start_card = self.card_pool.pop()
+            self.board[row][0] = start_card
+            p5.available_cards.remove(start_card)
 
         # print(self.board)
 
@@ -47,6 +54,11 @@ class State:
 
             played_card_test = [item[1] for item in current_played_cards]
             # print(played_card_test)
+
+            for c in current_played_cards:
+                if c in p5.available_cards:
+                    p5.available_cards.remove(c)
+
             self.add_cards_to_board(current_played_cards)
             # print(self.board)
 
@@ -62,62 +74,62 @@ class State:
                 #     p.rewards.append(p.calculate_reward(ranks[i]))
 
 
-                if isinstance(p, QlearnPlayer):
-                    if turn != 10:
-                        reward = p.calculate_reward()
-                        print(reward)
-                    else:
-                        self.update_scoreboard()
-                        sorted_indices = np.argsort(self.scoreboard)
-                        ranks = np.argsort(sorted_indices) + 1
-                        reward = p.calculate_reward(ranks[i])
-                        #print(reward)
-
-                    p.learn(current_state, reward, next_state)
-
-                if isinstance(p, DeepQPlayer):
-                    if turn != 10:
-                        reward = p.calculate_reward()
-                        #print(reward)
-                        done = False
-                    else:
-                        self.update_scoreboard()
-                        sorted_indices = np.argsort(self.scoreboard)
-                        ranks = np.argsort(sorted_indices) + 1
-                        reward = p.calculate_reward(ranks[i])
-                        #print(reward)
-                        done = True
-
-                    current_state_t = [row[:-1] for row in current_state]
-                    next_state_t = [row[:-1] for row in next_state]
-                    positions_for_card_c = []
-                    bullhead_per_row_c = []
-                    positions_for_card_n = []
-                    bullhead_per_row_n = []
-                    for line in current_state_t:
-                        positions_for_card_c.append(line.count(0))
-                        bullhead_sum = 0
-                        for element in line:
-                            bullhead_sum += BULLHEAD[element]
-                        bullhead_per_row_c.append(bullhead_sum)
-                    for line in next_state_t:
-                        positions_for_card_n.append(line.count(0))
-                        bullhead_sum = 0
-                        for element in line:
-                            bullhead_sum += BULLHEAD[element]
-                        bullhead_per_row_n.append(bullhead_sum)
-                    cur_state_t = [item for sublist in current_state_t for item in sublist]
-                    next_state_t = [item for sublist in next_state_t for item in sublist]
-
-                    #print(cur_state_t, p.current_action-1, reward, next_state_t, done,p.hand)
-                    hand_remember = copy.deepcopy(p.hand)
-                    hand_nn = copy.deepcopy(p.hand)
-                    hand_nn.extend([0] * (10-len(hand_nn)))
-                    large_state_c = hand_nn + cur_state_t + positions_for_card_c + bullhead_per_row_c
-                    large_state_n = hand_nn + next_state_t + positions_for_card_n + bullhead_per_row_n
-                    #print(large_state_c)
-                    p.remember(large_state_c, p.current_action-1, reward, large_state_n, done, hand_remember)
-                    p.train()
+                # if isinstance(p, QlearnPlayer):
+                #     if turn != 10:
+                #         reward = p.calculate_reward()
+                #         print(reward)
+                #     else:
+                #         self.update_scoreboard()
+                #         sorted_indices = np.argsort(self.scoreboard)
+                #         ranks = np.argsort(sorted_indices) + 1
+                #         reward = p.calculate_reward(ranks[i])
+                #         #print(reward)
+                #
+                #     p.learn(current_state, reward, next_state)
+                #
+                # if isinstance(p, DeepQPlayer):
+                #     if turn != 10:
+                #         reward = p.calculate_reward()
+                #         #print(reward)
+                #         done = False
+                #     else:
+                #         self.update_scoreboard()
+                #         sorted_indices = np.argsort(self.scoreboard)
+                #         ranks = np.argsort(sorted_indices) + 1
+                #         reward = p.calculate_reward(ranks[i])
+                #         #print(reward)
+                #         done = True
+                #
+                #     current_state_t = [row[:-1] for row in current_state]
+                #     next_state_t = [row[:-1] for row in next_state]
+                #     positions_for_card_c = []
+                #     bullhead_per_row_c = []
+                #     positions_for_card_n = []
+                #     bullhead_per_row_n = []
+                #     for line in current_state_t:
+                #         positions_for_card_c.append(line.count(0))
+                #         bullhead_sum = 0
+                #         for element in line:
+                #             bullhead_sum += BULLHEAD[element]
+                #         bullhead_per_row_c.append(bullhead_sum)
+                #     for line in next_state_t:
+                #         positions_for_card_n.append(line.count(0))
+                #         bullhead_sum = 0
+                #         for element in line:
+                #             bullhead_sum += BULLHEAD[element]
+                #         bullhead_per_row_n.append(bullhead_sum)
+                #     cur_state_t = [item for sublist in current_state_t for item in sublist]
+                #     next_state_t = [item for sublist in next_state_t for item in sublist]
+                #
+                #     #print(cur_state_t, p.current_action-1, reward, next_state_t, done,p.hand)
+                #     hand_remember = copy.deepcopy(p.hand)
+                #     hand_nn = copy.deepcopy(p.hand)
+                #     hand_nn.extend([0] * (10-len(hand_nn)))
+                #     large_state_c = hand_nn + cur_state_t + positions_for_card_c + bullhead_per_row_c
+                #     large_state_n = hand_nn + next_state_t + positions_for_card_n + bullhead_per_row_n
+                #     #print(large_state_c)
+                #     p.remember(large_state_c, p.current_action-1, reward, large_state_n, done, hand_remember)
+                #     p.train()
 
                 p.prepare_for_next_turn()
 
@@ -182,11 +194,11 @@ if __name__ == '__main__':
     target_model = QNetwork().to(device)
     target_model.load_state_dict(model.state_dict())
 
-    p1 = DeepQPlayer('Player 1', model, target_model)
-    p2 = DeepQPlayer('Player 2', model, target_model)
+    p1 = RandomPlayer('Player 1')
+    p2 = RulePlayer('Player 2')
     p3 = RulePlayer('Player 3')
     p4 = RulePlayer('Player 4')
-    p5 = RandomPlayer('Player 5')
+    p5 = MCTSPlayer('Player 5')
     state.add_player(p1)
     state.add_player(p2)
     state.add_player(p3)
@@ -194,21 +206,21 @@ if __name__ == '__main__':
     state.add_player(p5)
 
 
-    num_of_games = 1000000
+    num_of_games = 1000
 
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(1, num_of_games+1):
-        #print('episode:', episode)
+        print('episode:', episode)
         state.play()
         final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
         state.prepare_for_next_game()
-        if episode % 300 == 0:
-            p2.update_target_network()
-        if episode % 1000 == 0:
-            print(episode)
-            print([x / 1000 for x in final_scores])
+        # if episode % 300 == 0:
+        #     p2.update_target_network()
+        # if episode % 100 == 0:
+        #     print(episode)
+        #     print([x / 100 for x in final_scores])
             #print(p2.epsilon)
-            final_scores = [0, 0, 0, 0, 0]
+    print([x / 1000 for x in final_scores])
 
 
     #torch.save(model.state_dict(), "deepqlearn3.pth")

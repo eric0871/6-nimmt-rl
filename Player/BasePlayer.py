@@ -13,7 +13,7 @@ class BasePlayer:
     def draw(self, card):
         self.hand.append(card)
 
-    def choose_action(self, board, played_cards):
+    def choose_action(self, board, played_cards, available):
         raise NotImplementedError
 
     def get_score(self):
