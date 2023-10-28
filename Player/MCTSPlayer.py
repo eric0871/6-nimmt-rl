@@ -117,7 +117,8 @@ class Simulator():
                 n_mc = min(100, 50 * math.factorial(n))
                 available_cards_other = list(range(1, 105))
                 cards_used = other_player_hands[i] + np.array(self.board).ravel().tolist()
-                cards_used = [x for x in cards_used if x!= 0]
+                cards_used = [x for x in cards_used if x != 0]
+                cards_used = set(cards_used)
                 for card in cards_used:
                     available_cards_other.remove(card)
                 outcomes = {action: [] for action in other_player_hands[i]}
@@ -140,7 +141,7 @@ board = [
     [20, 26, 30, 59, 63, 0],
     [89, 99, 102, 103, 0, 0]
 ]
-hand = [41,53,103]
+hand = [41,53,104]
 
 agent = MCTSPlayer('Eric', 5)
 agent.hand = hand
