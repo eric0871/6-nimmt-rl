@@ -197,8 +197,8 @@ if __name__ == '__main__':
     p1 = RandomPlayer('Player 1')
     p2 = RulePlayer('Player 2')
     p3 = RulePlayer('Player 3')
-    p4 = RulePlayer('Player 4')
-    p5 = MCTSPlayer('Player 5')
+    p4 = MCTSPlayer('Player 4', method='random')
+    p5 = MCTSPlayer('Player 5', method='real')
     state.add_player(p1)
     state.add_player(p2)
     state.add_player(p3)
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     state.add_player(p5)
 
 
-    num_of_games = 1000
+    num_of_games = 100
 
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(1, num_of_games+1):
@@ -220,7 +220,7 @@ if __name__ == '__main__':
         #     print(episode)
         #     print([x / 100 for x in final_scores])
             #print(p2.epsilon)
-    print([x / 1000 for x in final_scores])
+        print([x / episode for x in final_scores])
 
 
     #torch.save(model.state_dict(), "deepqlearn3.pth")

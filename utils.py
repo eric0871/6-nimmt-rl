@@ -21,8 +21,10 @@ def lowest_bullhead_row(board):
         for card in row:
             bullhead_sum += BULLHEAD[card]
         row_bullhead.append(bullhead_sum)
+    min_bullhead = min(row_bullhead)
+    min_index = [i for i, val in enumerate(row_bullhead) if val == min_bullhead]
 
-    return row_bullhead.index(min(row_bullhead))
+    return random.choice(min_index)
 
 
 def get_score(player_board):
@@ -97,6 +99,7 @@ def choose_from_outcomes_softmax(outcomes):
     expected_values = []
     for outcome in outcomes.values():
         if outcome == []:
+            expected_values.append(-25)
             continue
         expected_values.append(np.mean(outcome))
     probs = softmax(np.array(expected_values))

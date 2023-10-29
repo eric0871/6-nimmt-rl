@@ -1,13 +1,21 @@
 from utils import *
 from Player.BasePlayer import BasePlayer
 import math
+import time
+import concurrent.futures
+
+
+def display_outcomes(outcomes):
+    for action in outcomes:
+        print(action, round(np.mean(outcomes[action]), 2))
 
 
 class MCTSPlayer(BasePlayer):
-    def __init__(self, name, num_of_players=5):
+    def __init__(self, name, method, num_of_players=5):
         super().__init__(name)
         self.available_cards = list(range(1, 105))
         self.num_of_players = num_of_players
+        self.method = method
 
     def start(self):
         for card in self.hand:
@@ -19,9 +27,9 @@ class MCTSPlayer(BasePlayer):
         for i in range(9):
             print("current board:", self.board)
             action = self.choose_action(self.board, None)
-            print("The best action is:", action)
+            print("The best action is: ", action)
 
-            other_players_actions = input("Enter other player's actions:").split()
+            other_players_actions = input("Enter other players' actions: ").split()
             other_players_actions = [int(card) for card in other_players_actions]
 
             for card in other_players_actions:
@@ -40,28 +48,36 @@ class MCTSPlayer(BasePlayer):
         n_mc = min(100, 50 * math.factorial(n))
         outcomes = {action: [] for action in self.hand}
         for _ in range(n_mc):
-            print(_)
+            #print(_)
+            start_time = time.time()
+
             simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(self.hand),
-                                      copy.deepcopy(self.available_cards), self.num_of_players, method='real')
+                                      copy.deepcopy(self.available_cards), self.num_of_players, method=self.method)
             action, outcome = simulated_env.play_out()
             outcomes[action].append(outcome)
 
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Code executed in: {elapsed_time:.5f} seconds")
 
         best_action = choose_from_outcomes(outcomes)
         self.hand.remove(best_action)
 
-        self.display_outcomes(outcomes)
+        display_outcomes(outcomes)
 
         return best_action
 
-    def display_outcomes(self, outcomes):
-        for action in outcomes:
-            print(action, round(np.mean(outcomes[action]), 2))
+    def single_mcts_run(self):
+        simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(self.hand),
+                                  copy.deepcopy(self.available_cards), self.num_of_players, method=self.method)
+        action, outcome = simulated_env.play_out()
+        return action, outcome
 
     def prepare_for_next_round(self):
         self.hand = []
         self.cum_bullhead = 0
         self.available_cards = list(range(1, 105))
+
 
 class Simulator():
     def __init__(self, board, hero_hand, available_cards, num_of_players, method):
@@ -125,7 +141,8 @@ class Simulator():
 
                 for _ in range(n_mc):
                     simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(other_player_hands[i]),
-                                              copy.deepcopy(available_cards_other), self.num_of_players, method='random')
+                                              copy.deepcopy(available_cards_other), self.num_of_players,
+                                              method='random')
                     action, outcome = simulated_env.play_out()
                     outcomes[action].append(outcome)
 
@@ -135,15 +152,16 @@ class Simulator():
 
         return actions, other_player_hands
 
-board = [
-    [40, 71, 78, 80, 0, 0],
-    [52, 0, 0, 0, 0, 0],
-    [20, 26, 30, 59, 63, 0],
-    [89, 99, 102, 103, 0, 0]
-]
-hand = [41,53,104]
 
-agent = MCTSPlayer('Eric', 5)
+board = [
+    [41, 0, 0, 0, 0, 0],
+    [43, 0, 0, 0, 0, 0],
+    [67, 0, 0, 0, 0, 0],
+    [39, 0, 0, 0, 0, 0]
+]
+hand = [7,9,10,26,38,46,65,81,88,93]
+
+agent = MCTSPlayer('Eric', 'real', 5)
 agent.hand = hand
 agent.board = board
 agent.start()
