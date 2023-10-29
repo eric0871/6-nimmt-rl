@@ -2,7 +2,7 @@ from utils import *
 from Player.BasePlayer import BasePlayer
 import math
 import time
-import concurrent.futures
+import multiprocessing
 
 
 def display_outcomes(outcomes):
@@ -47,18 +47,12 @@ class MCTSPlayer(BasePlayer):
         n = len(self.hand)
         n_mc = min(100, 50 * math.factorial(n))
         outcomes = {action: [] for action in self.hand}
-        for _ in range(n_mc):
-            #print(_)
-            start_time = time.time()
 
-            simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(self.hand),
-                                      copy.deepcopy(self.available_cards), self.num_of_players, method=self.method)
-            action, outcome = simulated_env.play_out()
-            outcomes[action].append(outcome)
+        with multiprocessing.Pool() as pool:
+            results = pool.map(self.single_mcts_run,[None for _ in range(n_mc)])
+            for action, outcome in results:
+                outcomes[action].append(outcome)
 
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            print(f"Code executed in: {elapsed_time:.5f} seconds")
 
         best_action = choose_from_outcomes(outcomes)
         self.hand.remove(best_action)
@@ -67,7 +61,7 @@ class MCTSPlayer(BasePlayer):
 
         return best_action
 
-    def single_mcts_run(self):
+    def single_mcts_run(self, dummy=None):
         simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(self.hand),
                                   copy.deepcopy(self.available_cards), self.num_of_players, method=self.method)
         action, outcome = simulated_env.play_out()
@@ -152,16 +146,16 @@ class Simulator():
 
         return actions, other_player_hands
 
+if __name__ == '__main__':
+    board = [
+        [6, 0, 0, 0, 0, 0],
+        [19, 0, 0, 0, 0, 0],
+        [76, 0, 0, 0, 0, 0],
+        [8, 0, 0, 0, 0, 0]
+    ]
+    hand = []
 
-board = [
-    [41, 0, 0, 0, 0, 0],
-    [43, 0, 0, 0, 0, 0],
-    [67, 0, 0, 0, 0, 0],
-    [39, 0, 0, 0, 0, 0]
-]
-hand = [7,9,10,26,38,46,65,81,88,93]
-
-agent = MCTSPlayer('Eric', 'real', 5)
-agent.hand = hand
-agent.board = board
-agent.start()
+    agent = MCTSPlayer('Eric', 'real', 5)
+    agent.hand = hand
+    agent.board = board
+    agent.start()

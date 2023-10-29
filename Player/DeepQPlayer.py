@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 from collections import deque
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(device)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# print(device)
 
 
 class DeepQPlayer(BasePlayer):
