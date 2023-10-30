@@ -4,12 +4,6 @@ import math
 import time
 import multiprocessing
 
-
-def display_outcomes(outcomes):
-    for action in outcomes:
-        print(action, round(np.mean(outcomes[action]), 2))
-
-
 class MCTSPlayer(BasePlayer):
     def __init__(self, name, method, num_of_players=5):
         super().__init__(name)
@@ -45,19 +39,17 @@ class MCTSPlayer(BasePlayer):
         self.board = b
 
         n = len(self.hand)
-        n_mc = min(100, 50 * math.factorial(n))
+        n_mc = min(100, 50 * math.factorial(11-n))
         outcomes = {action: [] for action in self.hand}
-
         with multiprocessing.Pool() as pool:
             results = pool.map(self.single_mcts_run,[None for _ in range(n_mc)])
             for action, outcome in results:
                 outcomes[action].append(outcome)
 
-
         best_action = choose_from_outcomes(outcomes)
         self.hand.remove(best_action)
 
-        display_outcomes(outcomes)
+        self.display_outcomes(outcomes)
 
         return best_action
 
@@ -66,6 +58,10 @@ class MCTSPlayer(BasePlayer):
                                   copy.deepcopy(self.available_cards), self.num_of_players, method=self.method)
         action, outcome = simulated_env.play_out()
         return action, outcome
+
+    def display_outcomes(self, outcomes):
+        for action in outcomes:
+            print(action, round(np.mean(outcomes[action]), 2))
 
     def prepare_for_next_round(self):
         self.hand = []
@@ -80,9 +76,11 @@ class Simulator():
         self.available_cards = available_cards
         self.num_of_players = num_of_players
         self.method = method
+        self.available_cards_other = list(range(1, 105))
+        self.other_player_hands = []
 
     def play_out(self):
-        other_player_hands = self.initialize_other_player_hands()
+        self.other_player_hands = self.initialize_other_player_hands()
         outcome = 0
         initial_action = None
 
@@ -96,7 +94,7 @@ class Simulator():
             if turn == 0:
                 initial_action = hero_action
 
-            other_player_actions, other_player_hands = self.choose_action_for_others(other_player_hands, self.method)
+            other_player_actions = self.choose_action_for_others(self.method)
             actions += other_player_actions
 
             self.board, next_outcome = update_state(self.board, actions)
@@ -105,55 +103,56 @@ class Simulator():
         return initial_action, outcome
 
     def initialize_other_player_hands(self):
-        other_player_hands = []
+        other_hands = []
         for _ in range(self.num_of_players - 1):
             random_hand = random.sample(self.available_cards, len(self.hero_hand))
-            other_player_hands.append(random_hand)
+            other_hands.append(random_hand)
             for card in random_hand:
                 self.available_cards.remove(card)
-        return other_player_hands
+        return other_hands
 
-    def choose_action_for_others(self, other_player_hands, method):
+    def choose_action_for_others(self, method):
         actions = []
         if method == 'random':
-            for i in range(len(other_player_hands)):
-                other_player_action = random.sample(other_player_hands[i], 1)[0]
+            for i in range(len(self.other_player_hands)):
+                other_player_action = random.sample(self.other_player_hands[i], 1)[0]
                 actions.append(other_player_action)
-                other_player_hands[i].remove(other_player_action)
+                self.other_player_hands[i].remove(other_player_action)
 
         if method == 'real':
-            for i in range(len(other_player_hands)):
-                n = len(other_player_hands[i])
-                n_mc = min(100, 50 * math.factorial(n))
-                available_cards_other = list(range(1, 105))
-                cards_used = other_player_hands[i] + np.array(self.board).ravel().tolist()
+            for i in range(len(self.other_player_hands)):
+                self.available_cards_other = list(range(1, 105))
+                n = len(self.other_player_hands[i])
+                n_mc = min(100, 50 * math.factorial(11-n))
+                cards_used = self.other_player_hands[i] + np.array(self.board).ravel().tolist()
                 cards_used = [x for x in cards_used if x != 0]
                 cards_used = set(cards_used)
                 for card in cards_used:
-                    available_cards_other.remove(card)
-                outcomes = {action: [] for action in other_player_hands[i]}
+                    self.available_cards_other.remove(card)
+                outcomes = {action: [] for action in self.other_player_hands[i]}
 
                 for _ in range(n_mc):
-                    simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(other_player_hands[i]),
-                                              copy.deepcopy(available_cards_other), self.num_of_players,
+                    simulated_env = Simulator(copy.deepcopy(self.board), copy.deepcopy(self.other_player_hands[i]),
+                                              copy.deepcopy(self.available_cards_other), self.num_of_players,
                                               method='random')
                     action, outcome = simulated_env.play_out()
                     outcomes[action].append(outcome)
 
                 best_action = choose_from_outcomes_softmax(outcomes)
                 actions.append(best_action)
-                other_player_hands[i].remove(best_action)
+                self.other_player_hands[i].remove(best_action)
 
-        return actions, other_player_hands
+        return actions
+
 
 if __name__ == '__main__':
     board = [
-        [6, 0, 0, 0, 0, 0],
-        [19, 0, 0, 0, 0, 0],
-        [76, 0, 0, 0, 0, 0],
-        [8, 0, 0, 0, 0, 0]
+        [59, 0, 0, 0, 0, 0],
+        [34, 0, 0, 0, 0, 0],
+        [37, 0, 0, 0, 0, 0],
+        [89, 0, 0, 0, 0, 0]
     ]
-    hand = []
+    hand = [6,30,33,35,53,58,62,63,85,101]
 
     agent = MCTSPlayer('Eric', 'real', 5)
     agent.hand = hand

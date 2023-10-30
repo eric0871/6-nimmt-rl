@@ -36,7 +36,7 @@ class State:
         for row in range(4):
             start_card = self.card_pool.pop()
             self.board[row][0] = start_card
-            p5.available_cards.remove(start_card)
+            #p5.available_cards.remove(start_card)
 
         # print(self.board)
 
@@ -189,16 +189,16 @@ if __name__ == '__main__':
     state = State(CARDS)
 
     # Deep Q Learning Model Initialization
-    model = QNetwork().to(device)
-    #model.load_state_dict(torch.load("deepqlearn3.pth"))
-    target_model = QNetwork().to(device)
-    target_model.load_state_dict(model.state_dict())
+    # model = QNetwork().to(device)
+    # #model.load_state_dict(torch.load("deepqlearn3.pth"))
+    # target_model = QNetwork().to(device)
+    # target_model.load_state_dict(model.state_dict())
 
     p1 = RandomPlayer('Player 1')
-    p2 = RulePlayer('Player 2')
-    p3 = RulePlayer('Player 3')
-    p4 = MCTSPlayer('Player 4', method='random')
-    p5 = MCTSPlayer('Player 5', method='real')
+    p2 = RandomPlayer('Player 2')
+    p3 = RandomPlayer('Player 3')
+    p4 = RandomPlayer('Player 4')
+    p5 = RandomPlayer('Player 5')
     state.add_player(p1)
     state.add_player(p2)
     state.add_player(p3)
@@ -206,11 +206,11 @@ if __name__ == '__main__':
     state.add_player(p5)
 
 
-    num_of_games = 100
-
+    num_of_games = 1000
+    print(time.time())
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(1, num_of_games+1):
-        print('episode:', episode)
+        #print('episode:', episode)
         state.play()
         final_scores = [a + b for a, b in zip(final_scores, state.scoreboard)]
         state.prepare_for_next_game()
@@ -220,7 +220,7 @@ if __name__ == '__main__':
         #     print(episode)
         #     print([x / 100 for x in final_scores])
             #print(p2.epsilon)
-        print([x / episode for x in final_scores])
-
+        #print([x / episode for x in final_scores])
+    print(time.time())
 
     #torch.save(model.state_dict(), "deepqlearn3.pth")

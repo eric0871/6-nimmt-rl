@@ -9,6 +9,7 @@ class BasePlayer:
         self.cum_bullhead = 0
         self.cur_bullhead = 0
         self.current_action = 0
+        self.available_cards = list(range(1, 105))
 
     def draw(self, card):
         self.hand.append(card)
