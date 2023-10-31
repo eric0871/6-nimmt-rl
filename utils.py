@@ -95,20 +95,21 @@ def choose_from_outcomes(outcomes):
     return best_action
 
 
-def choose_from_outcomes_softmax(outcomes):
+def choose_from_outcomes_softmax(outcomes, temperature=1.0):
     expected_values = []
     for outcome in outcomes.values():
         if outcome == []:
             expected_values.append(-25)
             continue
         expected_values.append(np.mean(outcome))
-    probs = softmax(np.array(expected_values))
+    probs = softmax(np.array(expected_values), temperature=temperature)
     chosen_action = np.random.choice(list(outcomes.keys()), p=probs)
 
     return chosen_action
 
 
-def softmax(x):
+def softmax(x, temperature=1.0):
     """Compute softmax values for each element of numpy array x."""
+    x = np.array(x) / temperature
     exp_x = np.exp(x - np.max(x))  # Subtract max for numerical stability
     return exp_x / exp_x.sum()

@@ -36,7 +36,10 @@ class State:
         for row in range(4):
             start_card = self.card_pool.pop()
             self.board[row][0] = start_card
-            #p5.available_cards.remove(start_card)
+
+            for p in self.players:
+                if isinstance(p, MCTSPlayer):
+                    p.available_cards.remove(start_card)
 
         # print(self.board)
 
@@ -55,9 +58,8 @@ class State:
             played_card_test = [item[1] for item in current_played_cards]
             # print(played_card_test)
 
-            for c in current_played_cards:
-                if c in p5.available_cards:
-                    p5.available_cards.remove(c)
+            for p in self.players:
+                p.remember_played(current_played_cards)
 
             self.add_cards_to_board(current_played_cards)
             # print(self.board)
@@ -207,7 +209,6 @@ if __name__ == '__main__':
 
 
     num_of_games = 1000
-    print(time.time())
     final_scores = [0, 0, 0, 0, 0]
     for episode in range(1, num_of_games+1):
         #print('episode:', episode)
@@ -220,7 +221,6 @@ if __name__ == '__main__':
         #     print(episode)
         #     print([x / 100 for x in final_scores])
             #print(p2.epsilon)
-        #print([x / episode for x in final_scores])
-    print(time.time())
+        print([x / episode for x in final_scores])
 
     #torch.save(model.state_dict(), "deepqlearn3.pth")
