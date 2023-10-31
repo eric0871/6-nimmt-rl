@@ -42,7 +42,10 @@ class State:
         for row in range(4):
             start_card = self.card_pool.pop()
             self.board[row][0] = start_card
-            #p5.available_cards.remove(start_card)
+
+            for p in self.players:
+                if isinstance(p, MCTSPlayer):
+                    p.available_cards.remove(start_card)
 
         # print(self.board)
 
@@ -61,6 +64,7 @@ class State:
             for c in current_played_cards:
                 if c in p5.available_cards:
                     p5.available_cards.remove(c)
+
 
             self.add_cards_to_board(current_played_cards)
             # print(self.board)
@@ -155,6 +159,7 @@ if __name__ == '__main__':
     elo_history = []
 
     # Iterate through a series of game episodes
+
     for episode in range(1, num_of_games+1):
         if episode % 100 == 0:
             print('episode:', episode)
