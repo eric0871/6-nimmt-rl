@@ -50,6 +50,7 @@ class State:
         self.scoreboard = [0] * len(self.players)
 
         self.deal()
+
         for turn in range(1, self.starting_hand_size+1):
             current_played_cards = []
             current_state = copy.deepcopy(self.board)
